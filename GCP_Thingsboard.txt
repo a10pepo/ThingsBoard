@@ -1,0 +1,62 @@
+gcloud compute instances create thingsboard1 --image-family ubuntu-1804-lts --image-project ubuntu-os-cloud --zone europe-west1-c --scopes storage-full
+sleep 10
+gcloud compute instances add-tags thingsboard1 --zone europe-west1-c --tags allports
+sleep 10
+gcloud beta compute --project "cofaresai" ssh --zone "europe-west1-c" "thingsboard1"
+sudo apt update
+sudo apt-get install -y openjdk-8-jdk
+wget https://github.com/thingsboard/thingsboard/releases/download/v2.4/thingsboard-2.4.deb
+sudo dpkg -i thingsboard-2.4.deb
+sudo su
+sudo echo "export DATABASE_ENTITIES_TYPE=sql" >> /etc/thingsboard/conf/thingsboard.conf
+sudo echo "export DATABASE_TS_TYPE=sql" >> /etc/thingsboard/conf/thingsboard.conf
+sudo echo "export SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect" >> /etc/thingsboard/conf/thingsboard.conf
+sudo echo "export SPRING_DRIVER_CLASS_NAME=org.postgresql.Driver" >> /etc/thingsboard/conf/thingsboard.conf
+sudo echo "export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/thingsboard" >> /etc/thingsboard/conf/thingsboard.conf
+sudo echo "export SPRING_DATASOURCE_USERNAME=postgres" >> /etc/thingsboard/conf/thingsboard.conf
+sudo echo "export SPRING_DATASOURCE_PASSWORD=postgres" >> /etc/thingsboard/conf/thingsboard.conf
+exit
+sudo apt-get install -y postgresql postgresql-contrib
+sudo service postgresql start
+sudo -i -u postgres
+psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"
+psql -U postgres -c "CREATE DATABASE thingsboard;"
+exit
+sudo /usr/share/thingsboard/bin/install/install.sh --loadDemo
+gsutil cp gs://cofaresai_dev_bucket/cofaresai_dev_bucket postgres.pgsql
+sudo -i -u postgres
+cp /home/pedronietopelaez/postgres.pgsql .
+psql -U postgres -c "DROP DATABASE thingsboard;"
+psql -U postgres -c "CREATE DATABASE thingsboard;"
+psql -U postgres thingsboard < postgres.pgsql
+exit
+sudo service thingsboard start
+sudo -i -u postgres
+while sleep 300; do pg_dump -U postgres thingsboard > postgres.pgsql; gsutil cp postgres.pgsql gs://cofaresai_dev_bucket/cofaresai_dev_bucket; done
+
+
+
+
+
+
+##OTHERS
+psql postgres thingsboard 
+psql -U postgres -c "SELECT * FROM pg_catalog.pg_tables;"
+
+EXPORT / IMPORT
+sudo -i -u postgres
+pg_dump -U postgres thingsboard > postgres.pgsql
+gsutil cp postgres.pgsql gs://cofaresai_dev_bucket/cofaresai_dev_bucket
+
+
+
+
+psql -U postgres thingsboard < postgres.pgsql
+
+
+
+
+sysadmin@thingsboard.org
+sysadmin
+
+
